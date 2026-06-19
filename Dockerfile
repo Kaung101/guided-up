@@ -12,7 +12,6 @@ WORKDIR /src/backend
 COPY backend/GuidedUp.Api/GuidedUp.Api.csproj ./GuidedUp.Api/
 RUN dotnet restore GuidedUp.Api/GuidedUp.Api.csproj
 COPY backend/ ./
-COPY .claude/skills/agenda-generator/SKILL.md ./Skills/agenda-generator/SKILL.md
 COPY --from=frontend-build /src/backend/GuidedUp.Api/wwwroot ./GuidedUp.Api/wwwroot
 RUN dotnet publish GuidedUp.Api/GuidedUp.Api.csproj -c Release -o /app
 
@@ -20,7 +19,6 @@ RUN dotnet publish GuidedUp.Api/GuidedUp.Api.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=backend-build /app ./
-COPY --from=backend-build /src/backend/Skills ./Skills
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production

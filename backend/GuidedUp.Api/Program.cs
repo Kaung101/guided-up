@@ -1,5 +1,5 @@
+using System.Linq;
 using System.Text;
-using System.Text.Json;
 using GuidedUp.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,27 +29,8 @@ if (app.Environment.IsDevelopment())
     app.UseCors();
 }
 
-// Load the agenda-generator skill at startup — try multiple paths
-var skillPath = Path.Combine(app.Environment.ContentRootPath, "Skills", "agenda-generator", "SKILL.md");
-if (!File.Exists(skillPath))
-{
-    skillPath = Path.Combine(app.Environment.ContentRootPath, "..", "..", ".claude", "skills", "agenda-generator", "SKILL.md");
-}
-if (!File.Exists(skillPath))
-{
-    skillPath = Path.Combine(Directory.GetCurrentDirectory(), "..", ".claude", "skills", "agenda-generator", "SKILL.md");
-}
-var skillContent = File.Exists(skillPath)
-    ? await File.ReadAllTextAsync(skillPath)
-    : "Generate a structured 30-minute mentorship agenda with time-labelled blocks: [00:00-02:00] Check-in, then three question blocks, ending with [28:00-30:00] Goal-setting.";
-
-var httpClient = new HttpClient();
-var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
-             ?? builder.Configuration["ANTHROPIC_API_KEY"]
-             ?? "";
-
 // POST /agenda
-app.MapPost("/agenda", async (AgendaRequest request) =>
+app.MapPost("/agenda", (AgendaRequest request) =>
 {
     var errors = new List<string>();
 
@@ -86,61 +67,103 @@ app.MapPost("/agenda", async (AgendaRequest request) =>
     if (errors.Count > 0)
         return Results.BadRequest(new ValidationError(false, errors));
 
-    // Build Claude prompt
-    var userMessage = $"""
-        Track: {request.Track}
-        Mentor: {mentorName}
-        Questions:
-        1. {q1}
-        2. {q2}
-        3. {q3}
-
-        Generate a 30-minute session agenda following the rules strictly.
-        """;
-
-    var payload = new
-    {
-        model = "claude-sonnet-4-6",
-        max_tokens = 1500,
-        system = skillContent,
-        messages = new[]
-        {
-            new { role = "user", content = userMessage }
-        }
-    };
-
-    var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-    {
-        Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
-    };
-    httpRequest.Headers.Add("x-api-key", apiKey);
-    httpRequest.Headers.Add("anthropic-version", "2023-06-01");
-
-    try
-    {
-        var response = await httpClient.SendAsync(httpRequest);
-        var responseBody = await response.Content.ReadAsStringAsync();
-
-        if (!response.IsSuccessStatusCode)
-            return Results.Problem(
-                detail: responseBody,
-                statusCode: (int)response.StatusCode);
-
-        using var doc = JsonDocument.Parse(responseBody);
-        var content = doc.RootElement
-            .GetProperty("content")[0]
-            .GetProperty("text")
-            .GetString() ?? "Agenda could not be generated.";
-
-        return Results.Ok(new AgendaResponse(content, request.Track, mentorName));
-    }
-    catch (HttpRequestException ex)
-    {
-        return Results.Problem(detail: $"Failed to reach Claude API: {ex.Message}", statusCode: 502);
-    }
+    var agenda = GenerateAgenda(request.Track, mentorName, q1, q2, q3);
+    return Results.Ok(new AgendaResponse(agenda, request.Track, mentorName));
 });
 
 app.Run();
+
+// --- Agenda Generator ---
+// Follows the rules in .claude/skills/agenda-generator/SKILL.md exactly.
+// No API key needed — the skill rules are implemented here directly.
+
+string GenerateAgenda(string track, string mentor, string q1, string q2, string q3)
+{
+    var questions = new[] { q1, q2, q3 };
+    var totalChars = questions.Sum(q => q.Length);
+    totalChars = totalChars == 0 ? 3 : totalChars; // avoid div-by-zero
+
+    // Allocate 26 minutes proportionally by question length
+    var allocs = questions
+        .Select(q => (int)Math.Round(26.0 * q.Length / totalChars))
+        .ToArray();
+
+    // Adjust so they sum to exactly 26
+    var diff = 26 - allocs.Sum();
+    allocs[0] += diff;
+
+    var tone = track == "career"
+        ? "professional, direct, outcome-oriented"
+        : "supportive, encouraging, process-oriented";
+
+    var toneNotes = track == "career"
+        ? new[] {
+            // Question 1
+            "Discuss current role and career stage",
+            "Identify what specific outcome the mentee wants",
+            "Share relevant personal experience if applicable",
+            // Question 2
+            "Identify actionable steps the mentee can take",
+            "Point to concrete resources, tools, or people",
+            "Suggest how to measure progress",
+            // Question 3
+            "Discuss long-term trajectory based on this topic",
+            "Address common pitfalls or misconceptions",
+            "Recommend one thing to try before the next session"
+        }
+        : new[] {
+            // Question 1
+            "Understand the mentee's academic background and target schools",
+            "Clarify what's the biggest uncertainty right now",
+            "Share what worked when you applied",
+            // Question 2
+            "Walk through the specific application step the mentee is stuck on",
+            "Review relevant deadlines and requirements",
+            "Point to helpful resources (essay guides, scholarship lists)",
+            // Question 3
+            "Discuss how this fits into the bigger application timeline",
+            "Address common mistakes applicants make here",
+            "Suggest one concrete action the mentee can take this week"
+        };
+
+    var sb = new StringBuilder();
+
+    // Header
+    var goal = track == "career" ? "Career growth" : "University application guidance";
+    sb.AppendLine($"## 30-Minute Session Agenda");
+    sb.AppendLine();
+    sb.AppendLine($"**Session:** {track} mentorship — {mentor} / {goal}");
+    sb.AppendLine();
+
+    var start = 2;
+    var blocks = new List<string>();
+
+    for (var i = 0; i < 3; i++)
+    {
+        var end = start + allocs[i];
+        blocks.Add($"[{start:D2}:00–{end:D2}:00] Question {i + 1} — {questions[i]}");
+        blocks.Add($"  • {toneNotes[i * 3]}");
+        blocks.Add($"  • {toneNotes[i * 3 + 1]}");
+        blocks.Add($"  • {toneNotes[i * 3 + 2]}");
+        blocks.Add("");
+        start = end;
+    }
+
+    sb.AppendLine($"[00:00–02:00] Check-in — Quick intro, mentee shares current context");
+    sb.AppendLine($"  • Tone: {tone}");
+    sb.AppendLine();
+
+    foreach (var block in blocks)
+        sb.AppendLine(block);
+
+    sb.AppendLine($"[28:00–30:00] Goal-setting — Mentee commits to one concrete next step");
+    sb.AppendLine($"  • What will the mentee do before the next session?");
+    sb.AppendLine($"  • How will they report back?");
+    sb.AppendLine();
+    sb.AppendLine($"> After the session: update your GuidedUp goal tracker to mark this complete.");
+
+    return sb.ToString().TrimEnd();
+}
 
 // --- Helpers ---
 
@@ -157,8 +180,26 @@ void ValidateQuestion(string question, int index, List<string> errors)
 bool IsDuplicate(string a, string b)
 {
     if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
-    var shorter = a.Length < b.Length ? a : b;
-    var longer = a.Length < b.Length ? b : a;
-    var common = shorter.Count(c => longer.Contains(c, StringComparison.OrdinalIgnoreCase));
-    return (double)common / longer.Length > 0.7;
+    var wordsA = ToLowerWords(a);
+    var wordsB = ToLowerWords(b);
+
+    var common = new HashSet<string>(wordsA, StringComparer.OrdinalIgnoreCase);
+    common.IntersectWith(wordsB);
+
+    var union = new HashSet<string>(wordsA, StringComparer.OrdinalIgnoreCase);
+    union.UnionWith(wordsB);
+
+    if (union.Count == 0) return false;
+    return (double)common.Count / union.Count > 0.7;
+}
+
+HashSet<string> ToLowerWords(string s)
+{
+    var words = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var word in s.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var cleaned = new string(word.Where(char.IsLetterOrDigit).ToArray());
+        if (cleaned.Length > 2) words.Add(cleaned);
+    }
+    return words;
 }
