@@ -1,0 +1,22 @@
+# Environment
+.env
+
+# Node
+node_modules/
+frontend/dist/
+
+# .NET
+backend/GuidedUp.Api/bin/
+backend/GuidedUp.Api/obj/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/settings.local.json
