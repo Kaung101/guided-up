@@ -16,19 +16,23 @@
  * DESIGN TOKENS
  * ============================================================ */
 :root {
-  /* ── Colors (Stitch palette) ── */
-  --color-primary: #0F4C5C;
-  --color-primary-hover: #0a3a47;
-  --color-primary-light: #e5eeff;
-  --color-primary-ring: rgba(15, 76, 92, 0.15);
+  /* ── Colors (exact match with code.html Tailwind config) ── */
+  --color-primary: #003441;
+  --color-primary-hover: #001f28;
+  --color-primary-light: rgba(0, 52, 65, 0.06);
+  --color-primary-ring: rgba(0, 52, 65, 0.15);
   --color-primary-fixed: #b6ebfe;
   --color-primary-fixed-dim: #9acee1;
-  --color-primary-container: #0f4c5c;
+  --color-primary-container: #0F4C5C;
 
-  --color-secondary: #E36414;
-  --color-secondary-hover: #c85510;
+  --color-secondary: #a04100;
+  --color-secondary-hover: #7a3000;
   --color-secondary-container: #fd7729;
   --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #5e2300;
+
+  --color-coral: #E36414;
+  --color-coral-hover: #c85510;
 
   --color-bg: #F8FAFC;
   --color-surface: #FFFFFF;
@@ -1653,13 +1657,13 @@ body {
 }
 
 .btn-cta-primary {
-  background: var(--color-secondary);
+  background: var(--color-coral);
   color: white;
   box-shadow: 0px 4px 16px rgba(227,100,20,0.35);
 }
 
 .btn-cta-primary:hover {
-  background: var(--color-secondary-hover);
+  background: var(--color-coral-hover);
   transform: translateY(-2px);
   box-shadow: 0px 8px 24px rgba(227,100,20,0.45);
 }
@@ -2426,7 +2430,7 @@ body {
 .btn-book {
   width: 100%;
   padding: 14px 24px;
-  background: var(--color-secondary);
+  background: var(--color-coral);
   color: white;
   border: none;
   border-radius: var(--radius-default);
@@ -2440,7 +2444,7 @@ body {
 }
 
 .btn-book:hover:not(:disabled) {
-  background: var(--color-secondary-hover);
+  background: var(--color-coral-hover);
   transform: translateY(-1px);
   box-shadow: 0px 8px 24px rgba(227,100,20,0.4);
 }
@@ -2508,12 +2512,12 @@ body {
 }
 
 .btn-modal-primary {
-  background: var(--color-secondary);
+  background: var(--color-coral);
   color: white;
 }
 
 .btn-modal-primary:hover {
-  background: var(--color-secondary-hover);
+  background: var(--color-coral-hover);
 }
 
 .btn-modal-secondary {
