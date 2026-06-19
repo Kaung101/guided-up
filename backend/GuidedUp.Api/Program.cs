@@ -15,10 +15,26 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-app.UseCors();
 
-// Load the agenda-generator skill at startup
-var skillPath = Path.Combine(app.Environment.ContentRootPath, "..", "..", ".claude", "skills", "agenda-generator", "SKILL.md");
+// Production: serve the Vite-built frontend from wwwroot
+if (!app.Environment.IsDevelopment())
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
+// Dev: allow Vite dev server on :5173 to call the backend
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors();
+}
+
+// Load the agenda-generator skill at startup — try multiple paths
+var skillPath = Path.Combine(app.Environment.ContentRootPath, "Skills", "agenda-generator", "SKILL.md");
+if (!File.Exists(skillPath))
+{
+    skillPath = Path.Combine(app.Environment.ContentRootPath, "..", "..", ".claude", "skills", "agenda-generator", "SKILL.md");
+}
 if (!File.Exists(skillPath))
 {
     skillPath = Path.Combine(Directory.GetCurrentDirectory(), "..", ".claude", "skills", "agenda-generator", "SKILL.md");

@@ -8,6 +8,7 @@ frontend/dist/
 # .NET
 backend/GuidedUp.Api/bin/
 backend/GuidedUp.Api/obj/
+backend/GuidedUp.Api/wwwroot/
 
 # IDE
 .idea/

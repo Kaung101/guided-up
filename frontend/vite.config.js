@@ -9,4 +9,8 @@ export default defineConfig({
       '/agenda': 'http://localhost:5037',
     },
   },
+  build: {
+    outDir: '../backend/GuidedUp.Api/wwwroot',
+    emptyOutDir: true,
+  },
 });
