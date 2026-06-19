@@ -8,6 +8,10 @@ export default defineConfig({
     proxy: {
       '/agenda': 'http://localhost:5037',
       '/mentors': 'http://localhost:5037',
+      '/bookings': 'http://localhost:5037',
+      '/goals': 'http://localhost:5037',
+      '/school-targets': 'http://localhost:5037',
+      '/profiles': 'http://localhost:5037',
     },
   },
   build: {
