@@ -58,6 +58,15 @@ app.MapPost("/profiles", (Profile p) =>
 app.MapGet("/profiles/{id:int}", (int id) =>
     profiles.TryGetValue(id, out var p) ? Results.Ok(p) : Results.NotFound());
 
+// GET /profiles?track=career — search profiles for login
+app.MapGet("/profiles", (string? track) =>
+{
+    var results = profiles.Values.AsEnumerable();
+    if (!string.IsNullOrEmpty(track))
+        results = results.Where(p => p.Track == track);
+    return Results.Ok(results.ToList());
+});
+
 // GET /mentors?track=career&industry=tech&specialism=stack
 app.MapGet("/mentors", (string? track, string? industry, string? roleLevel,
                          string? specialism, string? destinationCountry,
